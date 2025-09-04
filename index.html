@@ -19,7 +19,11 @@
     input, select, button {
       margin: 5px;
       padding: 10px;
-      font-size      box-sizing: border-box;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
     }
     button {
       background-color: #3498db;
@@ -87,7 +91,6 @@
 <body>
   <div class="container">
     <h1>Trail Nutrition Tracker</h1>
-
     <label for="reminderInterval">Reminder Interval:</label>
     <select id="reminderInterval">
       <option value="900">15 minutes</option>
@@ -126,166 +129,42 @@
     <button onclick="showSummary()" style="margin-top:30px;">Race Complete</button>
     <div id="summary"></div>
   </div>
+  <label for="reminderInterval">Reminder Interval:</label>
+    <select id="reminderInterval">
+      <option value="900">15 minutes</option>
+      <option value="1800">30 minutes</option>
+      <option value="3600" selected>1 hour</option>
+    </select>
 
-  <script>
-    let products = [];
-    let sections = [];
-    let raceStartTime = null;
-    let raceEndTime = null;
-    let timerInterval = null;
-    let lastAlertTime = 0;
-    let raceDuration = 3600;
+    <h2>Embed Strava Route</h2>
+    <input type="text" id="stravaRouteUrl" placeholder="Paste Strava Route URL" />
+    <button onclick="embedStravaRoute()">Embed Route</button>
+    <div id="stravaEmbed"></div>
 
-    function embedStravaRoute() {
-      const url = document.getElementById("stravaRouteUrl").value;
-      const match = url.match(/strava.com\\/routes\\/(\\d+)/);
-      if (match && match[1]) {
-        const routeId = match[1];
-        const embedCode = `
-          <div class="strava-embed-placeholder" data-embed-type="route" data-embed-id="${routeId}" data-style="standard" data-slippy="true"></div>
-          https://strava-embeds.com/embed.js</script>
-        `;
-        document.getElementById("stravaEmbed").innerHTML = embedCode;
-      } else {
-        alert("Invalid Strava route URL.");
-      }
-    }
+    <h2>Add Nutrition Product</h2>
+    <select id="category">
+      <option value="Plain Water">Plain Water</option>
+      <option value="Drink Mix">Drink Mix</option>
+      <option value="Gels">Gels</option>
+    </select>
+    <input type="text" id="name" placeholder="Product Name" />
+    <input type="number" id="calories" placeholder="Calories" />
+    <input type="number" id="carbs" placeholder="Carbs (g)" />
+    <input type="number" id="sodium" placeholder="Sodium (mg)" />
+    <input type="number" id="ounces" placeholder="Ounces (only for Water/Mix)" />
+    <button onclick="addProduct()">Add Product</button>
 
-    function addProduct() {
-      const category = document.getElementById("category").value;
-      const product = {
-        category,
-        name: document.getElementById("name").value,
-        calories: parseFloat(document.getElementById("calories").value) || 0,
-        carbs: parseFloat(document.getElementById("carbs").value) || 0,
-        sodium: parseFloat(document.getElementById("sodium").value) || 0,
-        ounces: (category === "Plain Water" || category === "Drink Mix") ? parseFloat(document.getElementById("ounces").value) || 0 : 0
-      };
-      products.push(product);
-      alert("Product added!");
-    }
+    <h2>Create Race Section</h2>
+    <input type="text" id="sectionName" placeholder="Section Name (e.g., Mile 0–5)" />
+    <button onclick="addSection()">Add Section</button>
 
-    function addSection() {
-      const name = document.getElementById("sectionName").value;
-      const section = { name, items: [] };
-      sections.push(section);
-      renderSections();
-    }
+    <button onclick="startRace()" style="margin-top:20px;">Start Race</button>
+    <div id="raceTimer"></div>
+    <div id="progressBarContainer"><div id="progressBar"></div></div>
 
-    function startRace() {
-      raceStartTime = new Date();
-      lastAlertTime = 0;
-      document.getElementById("raceTimer").textContent = "Race started at " + raceStartTime.toLocaleTimeString();
-      timerInterval = setInterval(() => {
-        const now = new Date();
-        const elapsed = Math.floor((now - raceStartTime) / 1000);
-        document.getElementById("raceTimer").textContent = "Race Time: " + Math.floor(elapsed / 60) + "m " + (elapsed % 60) + "s";
-        document.getElementById("progressBar").style.width = Math.min((elapsed / raceDuration) * 100, 100) + "%";
+    <div id="sections"></div>
 
-        const interval = parseInt(document.getElementById("reminderInterval").value);
-        if (elapsed - lastAlertTime >= interval) {
-          lastAlertTime = elapsed;
-          alert(`Reminder: ${interval / 60} minutes passed. Check your nutrition.`);
-          if (navigator.vibrate) navigator.vibrate(500);
-          if ('setAppBadge' in navigator) navigator.setAppBadge(interval / 60);
-        }
-      }, 1000);
-    }
-
-    function renderSections() {
-      const container = document.getElementById("sections");
-      container.innerHTML = "";
-      sections.forEach((section, index) => {
-        const div = document.createElement("div");
-        div.className = "section";
-        div.innerHTML = `<h3>${section.name}</h3>`;
-
-        const select = document.createElement("select");
-        products.forEach((p, i) => {
-          const option = document.createElement("option");
-          option.value = i;
-          option.textContent = `${p.category}: ${p.name}`;
-          select.appendChild(option);
-        });
-
-        const addBtn = document.createElement("button");
-        addBtn.textContent = "Add to Section";
-        addBtn.onclick = () => {
-          const selectedIndex = select.value;
-          section.items.push({ ...products[selectedIndex], consumed: false, timestamp: null });
-          renderSections();
-        };
-
-        div.appendChild(select);
-        div.appendChild(addBtn);
-
-        const table = document.createElement("table");
-        table.innerHTML = "<tr><th>Category</th><th>Name</th><th>Calories</th><th>Carbs</th><th>Sodium</th><th>Ounces</th><th>Consumed</th></tr>";
-        section.items.forEach((item, itemIndex) => {
-          const row = document.createElement("tr");
-          row.className = item.consumed ? "consumed" : "";
-          row.innerHTML = `<td>${item.category}</td><td>${item.name}</td><td>${item.calories}</td><td>${item.carbs}</td><td>${item.sodium}</td><td>${item.ounces}</td>`;
-          const checkCell = document.createElement("td");
-          const checkBtn = document.createElement("button");
-          checkBtn.textContent = item.consumed ? "✓" : "Mark Consumed";
-          checkBtn.onclick = () => {
-            item.consumed = true;
-            item.timestamp = new Date().toISOString();
-            renderSections();
-          };
-          checkCell.appendChild(checkBtn);
-          row.appendChild(checkCell);
-          table.appendChild(row);
-        });
-
-        div.appendChild(table);
-        container.appendChild(div);
-      });
-    }
-
-    function showSummary() {
-      clearInterval(timerInterval);
-      if ('clearAppBadge' in navigator) navigator.clearAppBadge();
-      raceEndTime = new Date();
-      let totalCalories = 0, totalCarbs = 0, totalSodium = 0, totalOunces = 0;
-      let hourlyStats = {};
-
-      sections.forEach(section => {
-        section.items.forEach(item => {
-          if (item.consumed && item.timestamp) {
-            const consumedTime = new Date(item.timestamp);
-            const hour = Math.floor((consumedTime - raceStartTime) / 3600000);
-            if (!hourlyStats[hour]) {
-              hourlyStats[hour] = { calories: 0, carbs: 0, sodium: 0, ounces: 0 };
-            }
-            hourlyStats[hour].calories += item.calories;
-            hourlyStats[hour].carbs += item.carbs;
-            hourlyStats[hour].sodium += item.sodium;
-            hourlyStats[hour].ounces += item.ounces || 0;
-
-            totalCalories += item.calories;
-            totalCarbs += item.carbs;
-            totalSodium += item.sodium;
-            totalOunces += item.ounces || 0;
-          }
-        });
-      });
-
-      let summaryHTML = `
-        <h3>Nutrition Summary</h3>
-        <p><strong>Total Calories:</strong> ${totalCalories.toFixed(1)}</p>
-        <p><strong>Total Carbs:</strong> ${totalCarbs.toFixed(1)} g</p>
-        <p><strong>Total Sodium:</strong> ${totalSodium.toFixed(1)} mg</p>
-        <p><strong>Total Ounces:</strong> ${totalOunces.toFixed(1)} oz</p>
-        <h4>Hourly Breakdown</h4>
-      `;
-      for (const hour in hourlyStats) {
-        const stats = hourlyStats[hour];
-        summaryHTML += `<p><strong>Hour ${hour}:</strong> ${stats.calories.toFixed(1)} cal, ${stats.carbs.toFixed(1)} g carbs, ${stats.sodium.toFixed(1)} mg sodium, ${stats.ounces.toFixed(1)} oz</p>`;
-      }
-
-      document.getElementById("summary").innerHTML = summaryHTML;
-    }
-  </script>
-</body>
-</html>
+    <button onclick="showSummary()" style="margin-top:30px;">Race Complete</button>
+    <div id="summary"></div>
+  </div>
+  
